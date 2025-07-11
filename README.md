@@ -1,6 +1,6 @@
 # Alzheimer's Disease Insights
 This interactive narrative visualization project explores the relationships between demographic, lifestyle, and cognitive function variables in patients diagnosed with Alzheimer's disease. Using D3.js, the visualizations present key patterns across different age groups, genders, ethnicities, and behavioral factors such as alcohol consumption and sleep quality.
-Link: https://cassyho.github.io/ 
+Link: [https://cassyho.github.io/](https://cassyho.github.io/alzheimers-insights/) 
 
 ## Visualizations
 The web app includes five distinct interactive scenes:
