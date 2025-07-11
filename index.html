@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Alzheimer's Disease Insights</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #title {
+            text-align: center;
+            font-size: 40px;
+            margin: 20px 0;
+            font-weight: bold;
+            color: navy;
+        }
+
+
+        .scene {
+            text-align: center;
+            margin: 40px auto;
+            width: 80%;
+        }
+
+        .chart {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+        }
+
+        .dropdown {
+            margin-bottom: 20px;
+        }
+
+        .description {
+            font-size: 16px;
+            margin-top: 10px;
+            color: #666;
+        }
+
+        .legend {
+            margin-top: 10px;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .button-container button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+    </style>
+</head>
+
+<body>
+<div id="title">Alzheimer's Disease Insights</div>
+<div class="button-container">
+    <button onclick="showScene('scene1')">Age Distribution</button>
+    <button onclick="showScene('scene2')">Gender Distribution</button>
+    <button onclick="showScene('scene3')">Ethnicity Distribution</button>
+    <button onclick="showScene('scene4')">Cognitive Function and Alcohol Consumption</button>
+    <button onclick="showScene('scene5')">Cognitive Function and Sleep Quality</button>
+</div>
+
+<!-- Scene 1 -->
+<div id="scene1" class="scene">
+    <h2>Age Distribution by Diagnosis</h2>
+    <div id="chart1" class="chart"></div>
+    <p class="description">This chart shows the age distribution of patients categorized by diagnosis. The
+        stacked bars illustrate how the age groups are distributed between the two diagnostic groups (0: Alzheimer's Disease(no), and 1: Alzheimer's Disease(yes) ).</p>
+    <div class="legend">Legend: The color in the bar chart represents two diagnostic groups. </div>
+</div>
+
+<!-- Scene 2 -->
+<div id="scene2" class="scene" style="display:none;">
+    <h2>Gender and Diagnosis Comparison</h2>
+    <div id="chart2" class="chart"></div>
+    <p class="description">This bar chart compares the number of patients with different genders (0 represents Male and 1 represents Female) across two
+        diagnostic groups (0: Alzheimer's Disease(no), and 1: Alzheimer's Disease(yes)). The chart helps to visualize any gender disparities in the diagnosis of
+        Alzheimer's disease.</p>
+    <div class="legend">The bars represent the count of patients for each gender within each diagnostic group.</div>
+</div>
+
+<!-- Scene 3 -->
+<div id="scene3" class="scene" style="display:none;">
+    <h2>Ethnicity and Diagnosis Comparison</h2>
+    <div id="chart3" class="chart"></div>
+    <p class="description">This bar chart compares the number of patients with different ethnicities (0: Caucasian, 1: African American
+        , 2: Asian, 3: Other) across two diagnostic groups (0: Alzheimer's Disease(no), and 1: Alzheimer's Disease(yes) ). The chart helps to visualize any ethnic disparities in the diagnosis of
+        Alzheimer's disease.</p>
+    <div class="legend">The bars represent the count of patients for each ethnicity within each diagnostic
+        group.</div>
+</div>
+<!-- Scene 4 -->
+<div id="scene4" class="scene" style="display:none;">
+    <h2>Cognitive Function vs. Alcohol Consumption</h2>
+    <div class="dropdown">
+        <label for="dropdown1">Select variable:</label>
+        <select id="dropdown1" onchange="updateScatterPlot1()">
+            <option value="MMSE">MMSE</option>
+            <option value="FunctionalAssessment">Functional Assessment</option>
+        </select>
+    </div>
+    <div id="chart4" class="chart"></div>
+    <p class="description">This scatter plot shows the relationship between MMSE (or Functional Assessment) scores and Alcohol Consumption levels.
+        Each point is colored according to the patient's age group, which helps to understand how these variables relate and differ by age.
+        Users select two variables in the dropdown menu and the chart will be displayed based on user selection.</p>
+    <div class="legend">Legend: Each color represents a different age group (10-year intervals).</div>
+</div>
+
+<!-- Scene 5 -->
+<div id="scene5" class="scene" style="display:none;">
+    <h2>Cognitive Function vs. Sleep Quality</h2>
+    <div class="dropdown">
+        <label for="dropdown2">Select variable:</label>
+        <select id="dropdown2" onchange="updateScatterPlot2()">
+            <option value="MMSE">MMSE</option>
+            <option value="FunctionalAssessment">Functional Assessment</option>
+        </select>
+    </div>
+    <div id="chart5" class="chart"></div>
+    <p class="description">This scatter plot shows the relationship between MMSE (or Functional Assessment) scores and Sleep Quality. Each point is colored according to the patient's age group,
+        which helps to compare these variables across different ages.
+        Users select two variables in the dropdown menu and the chart will be displayed based on user selection.</p>
+    <div class="legend">Legend: Each color represents a different age group (10-year intervals).</div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+    d3.csv('alzheimers_disease_data.csv').then(function (data) {
+        // Clean data by dropping NaNs
+        data = data.filter(d => d.Gender && d.Diagnosis !== '' && d.Ethnicity && d.AlcoholConsumption !== '' && d.SleepQuality !== '' && d.MMSE !== '' && d.FunctionalAssessment !== '');
+// Scene 1: Age Distribution by Gender and Diagnosis
+        let isLegendCreated = false;
+
+        function createScene1(data) {
+            // Clear existing SVG elements
+            d3.select("#chart1").selectAll("svg").remove();
+
+            const svg = d3.select("#chart1").append("svg").attr("width", 1000).attr("height", 500);
+            const margin = { top: 40, right: 150, bottom: 60, left: 50 };
+            const width = 1000 - margin.left - margin.right;
+            const height = 500 - margin.top - margin.bottom;
+            const chart = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const ageGroups = d3.range(0, 100, 10);
+            const ageData = d3.rollup(data, v => v.length, d => d.Diagnosis, d => Math.floor(d.Age / 10) * 10);
+            const ageArray = Array.from(ageData, ([key, value]) => {
+                return { diagnosis: key, ages: Array.from(value, ([k, v]) => ({ ageGroup: k, count: v })) };
+            });
+
+            const x0 = d3.scaleBand().domain(ageGroups).range([0, width]).padding(0.1);
+            const x1 = d3.scaleBand().domain([0, 1]).range([0, x0.bandwidth()]).padding(0.05);
+            const y = d3.scaleLinear().domain([0, d3.max(ageArray, d => d3.max(d.ages, a => a.count))]).nice().range([height, 0]);
+
+            const color = d3.scaleOrdinal().domain([0, 1]).range(["#1f77b4", "#ff7f0e"]);
+
+            chart.append("g").selectAll("g")
+                .data(ageGroups)
+                .enter().append("g")
+                .attr("transform", d => `translate(${x0(d)},0)`)
+                .selectAll("rect")
+                .data(d => {
+                    const ageGroupData = ageArray.map(group => {
+                        const age = group.ages.find(a => a.ageGroup === d);
+                        return { diagnosis: group.diagnosis, count: age ? age.count : 0 };
+                    });
+                    return ageGroupData;
+                })
+                .enter().append("rect")
+                .attr("x", d => x1(d.diagnosis))
+                .attr("y", d => y(d.count))
+                .attr("width", x1.bandwidth())
+                .attr("height", d => height - y(d.count))
+                .attr("fill", d => color(d.diagnosis));
+
+            chart.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x0).tickFormat(d => `${d}-${d + 9}`));
+
+            chart.append("g")
+                .attr("class", "y axis")
+                .call(d3.axisLeft(y));
+
+            chart.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("Count");
+
+            chart.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .text("Age Groups");
+
+            console.log("Legend creation started");
+            console.log("Color domain:", color.domain());
+
+            const domain = Array.from(new Set(color.domain().map(d => String(d)))); // Convert all values to strings and remove duplicates
+
+            svg.selectAll(".legend").remove();
+
+            const legend = svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${width + 40}, 0)`);
+
+            legend.selectAll("rect")
+                .data(domain)
+                .enter().append("rect")
+                .attr("x", 0)
+                .attr("y", (d, i) => i * 25)
+                .attr("width", 20)
+                .attr("height", 20)
+                .attr("fill", d => color(d)); // Apply color function to normalized binary values
+
+
+            legend.selectAll("text")
+                .data(domain)
+                .enter().append("text")
+                .attr("x", 30)
+                .attr("y", (d, i) => i * 25 + 15)
+                .text(d => `Diagnosis ${d}`);
+
+            console.log("Legend creation ended");
+
+            // Add unique arrowhead marker for Scene 1
+            svg.append("defs").append("marker")
+                .attr("id", "arrow-scene1")
+                .attr("viewBox", "0 0 10 10")
+                .attr("refX", 5)
+                .attr("refY", 5)
+                .attr("markerWidth", 4)
+                .attr("markerHeight", 4)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M 0 0 L 10 5 L 0 10 z")
+                .attr("fill", "black");
+
+            console.log("Arrowhead marker defined");
+
+            const maxAgeGroup = 60;
+            const maxDiagnosis = 1;
+            const maxCountData = ageArray.find(d => d.diagnosis == maxDiagnosis)?.ages.find(a => a.ageGroup === maxAgeGroup);
+
+            if (maxCountData) {
+                const maxCount = maxCountData.count;
+                const xPos = x0(maxAgeGroup) + x1(maxDiagnosis) + x1.bandwidth() / 2;
+                const yPos = y(maxCount) - 10;
+
+                console.log(`xPos: ${xPos}, yPos: ${yPos}`);
+
+                const endX = xPos - 40;
+                const endY = yPos + 20;
+
+                chart.append("line")
+                    .attr("x1", endX - 120)
+                    .attr("y1", endY + 70)
+                    .attr("x2", endX)
+                    .attr("y2", endY)
+                    .attr("stroke", "black")
+                    .attr("stroke-width", 2)
+                    .attr("marker-end", "url(#arrow-scene1)");
+
+                console.log("Annotation arrow created");
+
+                // Add text annotation
+                chart.append("text")
+                    .attr("x", endX - 400)
+                    .attr("y", endY +80)
+                    .text("Highest Count of Alzheimer's Disease\n in 60-69 Age Group")
+                    .attr("fill", "black")
+                    .style("font-size", "12px")
+                    .style("text-anchor", "start");
+            } else {
+                console.error('No data found for diagnosis 1 in the 60-69 age group.');
+            }
+        }
+
+        // Scene 2: Gender and Diagnosis Comparison
+        function createScene2(data) {
+            const svg = d3.select("#chart2").append("svg").attr("width", 1000).attr("height", 500);
+            const margin = { top: 40, right: 150, bottom: 60, left: 50 };
+            const width = 1000 - margin.left - margin.right;
+            const height = 500 - margin.top - margin.bottom;
+            const chart = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const genderData = d3.rollup(data, v => v.length, d => d.Gender, d => d.Diagnosis);
+            const genderArray = Array.from(genderData, ([key, value]) => {
+                return { gender: key, diagnosisCounts: Array.from(value, ([k, v]) => ({ diagnosis: k, count: v })) };
+            });
+
+            const x0 = d3.scaleBand().domain(genderArray.map(d => d.gender)).range([0, width]).padding(0.1);
+            const x1 = d3.scaleBand().domain([0, 1]).range([0, x0.bandwidth()]).padding(0.05);
+            const y = d3.scaleLinear().domain([0, d3.max(genderArray, d => d3.max(d.diagnosisCounts, a => a.count))]).nice().range([height, 0]);
+
+            const color = d3.scaleOrdinal().domain([0, 1]).range(["#1f77b4", "#ff7f0e"]);
+
+            chart.append("g").selectAll("g")
+                .data(genderArray)
+                .enter().append("g")
+                .attr("transform", d => `translate(${x0(d.gender)},0)`)
+                .selectAll("rect")
+                .data(d => d.diagnosisCounts)
+                .enter().append("rect")
+                .attr("x", d => x1(d.diagnosis))
+                .attr("y", d => y(d.count))
+                .attr("width", x1.bandwidth())
+                .attr("height", d => height - y(d.count))
+                .attr("fill", d => color(d.diagnosis));
+
+            chart.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x0));
+
+            chart.append("g")
+                .attr("class", "y axis")
+                .call(d3.axisLeft(y));
+
+            chart.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("Count");
+
+            chart.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .text("Gender");
+
+            console.log("Legend creation started");
+            console.log("Color domain:", color.domain());
+
+            const domain = Array.from(new Set(color.domain().map(d => String(d)))); // Convert all values to strings and remove duplicates
+
+            svg.selectAll(".legend").remove();
+
+            const legend = svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${width + 40}, 0)`);
+
+            legend.selectAll("rect")
+                .data(domain)
+                .enter().append("rect")
+                .attr("x", 0)
+                .attr("y", (d, i) => i * 25)
+                .attr("width", 20)
+                .attr("height", 20)
+                .attr("fill", d => color(d)); // Apply color function to normalized binary values
+
+            legend.selectAll("text")
+                .data(domain)
+                .enter().append("text")
+                .attr("x", 30)
+                .attr("y", (d, i) => i * 25 + 15)
+                .text(d => `Diagnosis ${d}`);
+
+            console.log("Legend creation ended");
+
+            //most diagnosis 1 count
+            const maxDiagnosis1 = genderArray.reduce((max, d) => {
+                const diagnosis1Count = d.diagnosisCounts.find(dc => dc.diagnosis == 1)?.count || 0;
+                return diagnosis1Count > max.count ? { gender: d.gender, count: diagnosis1Count } : max;
+            }, { gender: null, count: 0 });
+
+            console.log("Max Diagnosis 1 Group:", maxDiagnosis1);
+
+            // Add arrowhead marker
+            svg.append("defs").append("marker")
+                .attr("id", "arrow")
+                .attr("viewBox", "0 0 10 10")
+                .attr("refX", 5)
+                .attr("refY", 5)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto-start-reverse")
+                .append("path")
+                .attr("d", "M 0 0 L 10 5 L 0 10 z")
+                .attr("fill", "black");
+
+            // Add annotation
+            if (maxDiagnosis1.gender !== null) {
+                const annotationX = x0(maxDiagnosis1.gender) + x1(1) + x1.bandwidth() / 2;
+                const annotationY = y(maxDiagnosis1.count);
+
+                console.log("Annotation X:", annotationX);
+                console.log("Annotation Y:", annotationY);
+
+                // Add arrow
+                svg.append("line")
+                    .attr("x1", annotationX + margin.left)
+                    .attr("y1", annotationY + margin.top)
+                    .attr("x2", annotationX + margin.left -40)
+                    .attr("y2", annotationY + 40 + margin.top)
+                    .attr("stroke", "black")
+                    .attr("marker-end", "url(#arrow)");
+
+                svg.append("text")
+                    .attr("x", annotationX + margin.left)
+                    .attr("y", annotationY - 25 + margin.top)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "black")
+                    .text(`Highest Count of Alzheimer's: ${maxDiagnosis1.count}`)
+                    .style("font-size", "12px");
+            }
+        }
+
+        // Scene 3: Ethnicity and Diagnosis Comparison
+        function createScene3(data) {
+            const svg = d3.select("#chart3").append("svg").attr("width", 1000).attr("height", 500);
+            const margin = { top: 40, right: 150, bottom: 60, left: 50 };
+            const width = 1000 - margin.left - margin.right;
+            const height = 500 - margin.top - margin.bottom;
+            const chart = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const ethnicityData = d3.rollup(data, v => v.length, d => d.Ethnicity, d => d.Diagnosis);
+            const ethnicityArray = Array.from(ethnicityData, ([key, value]) => {
+                return { ethnicity: key, diagnosisCounts: Array.from(value, ([k, v]) => ({ diagnosis: k, count: v })) };
+            });
+
+            ethnicityArray.sort((a, b) => d3.ascending(a.ethnicity, b.ethnicity));
+
+            const x0 = d3.scaleBand().domain(ethnicityArray.map(d => d.ethnicity)).range([0, width]).padding(0.1);
+            const x1 = d3.scaleBand().domain([0, 1]).range([0, x0.bandwidth()]).padding(0.05);
+            const y = d3.scaleLinear().domain([0, d3.max(ethnicityArray, d => d3.max(d.diagnosisCounts, a => a.count))]).nice().range([height, 0]);
+
+            const color = d3.scaleOrdinal().domain([0, 1]).range(["#1f77b4", "#ff7f0e"]);
+
+            chart.append("g").selectAll("g")
+                .data(ethnicityArray)
+                .enter().append("g")
+                .attr("transform", d => `translate(${x0(d.ethnicity)},0)`)
+                .selectAll("rect")
+                .data(d => d.diagnosisCounts)
+                .enter().append("rect")
+                .attr("x", d => x1(d.diagnosis))
+                .attr("y", d => y(d.count))
+                .attr("width", x1.bandwidth())
+                .attr("height", d => height - y(d.count))
+                .attr("fill", d => color(d.diagnosis));
+
+            chart.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x0));
+
+            chart.append("g")
+                .attr("class", "y axis")
+                .call(d3.axisLeft(y));
+
+            chart.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("Count");
+
+            chart.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .text("Ethnicity");
+
+            console.log("Legend creation started");
+            console.log("Color domain:", color.domain());
+
+            const domain = Array.from(new Set(color.domain().map(d => String(d)))); // Convert all values to strings and remove duplicates
+
+            svg.selectAll(".legend").remove();
+
+            const legend = svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${width + 40}, 0)`);
+
+            legend.selectAll("rect")
+                .data(domain)
+                .enter().append("rect")
+                .attr("x", 0)
+                .attr("y", (d, i) => i * 25)
+                .attr("width", 20)
+                .attr("height", 20)
+                .attr("fill", d => color(d));
+
+            legend.selectAll("text")
+                .data(domain)
+                .enter().append("text")
+                .attr("x", 30)
+                .attr("y", (d, i) => i * 25 + 15)
+                .text(d => `Diagnosis ${d}`);
+
+            console.log("Legend creation ended");
+            // max diagnosis count group
+            const maxDiagnosis1 = ethnicityArray.reduce((max, d) => {
+                const diagnosis1Count = d.diagnosisCounts.find(dc => dc.diagnosis == 1)?.count || 0;
+                return diagnosis1Count > max.count ? { ethnicity: d.ethnicity, count: diagnosis1Count } : max;
+            }, { ethnicity: null, count: 0 });
+
+            console.log("Max Diagnosis 1 Group:", maxDiagnosis1);
+
+            // Add arrowhead marker
+            svg.append("defs").append("marker")
+                .attr("id", "arrow-scene3")
+                .attr("viewBox", "0 0 10 10")
+                .attr("refX", 5)
+                .attr("refY", 5)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M 0 0 L 10 5 L 0 10 z")
+                .attr("fill", "black");
+            console.log("Arrowhead marker defined");
+
+            if (maxDiagnosis1.ethnicity !== null) {
+                const annotationX = x0(maxDiagnosis1.ethnicity) + x1(1) + x1.bandwidth() / 2;
+                const annotationY = y(maxDiagnosis1.count);
+
+                console.log("Annotation X:", annotationX);
+                console.log("Annotation Y:", annotationY);
+
+                svg.append("line")
+                    .attr("x1", annotationX + margin.left)
+                    .attr("y1", annotationY + margin.top)
+                    .attr("x2", annotationX + margin.left - 40)
+                    .attr("y2", annotationY + margin.top + 40)
+                    .attr("stroke", "black")
+                    .attr("marker-end", "url(#arrow-scene3)");
+
+                // Add text annotation
+                svg.append("text")
+                    .attr("x", annotationX + margin.left + 50)
+                    .attr("y", annotationY + margin.top - 50)
+                    .attr("text-anchor", "start")
+                    .attr("fill", "black")
+                    .style("font-size", "12px")
+                    .text(`Highest Count of Alzheimer's: ${maxDiagnosis1.count}`);
+            }
+        }
+        // functions for Scene 4 and Scene 5
+        function createScatterPlot(containerId, xVar, yVar, title, yAxisLabel) {
+            const svg = d3.select(containerId).append("svg").attr("width", 1000).attr("height", 500);
+            const margin = { top: 40, right: 150, bottom: 60, left: 50 };
+            const width = 1000 - margin.left - margin.right;
+            const height = 500 - margin.top - margin.bottom;
+            const chart = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const ageGroups = d3.range(0, 100, 10);
+            const color = d3.scaleOrdinal(d3.schemeCategory10).domain(ageGroups.map(d => d.toString()));
+
+            const x = d3.scaleLinear().domain([0, d3.max(data, d => +d[xVar])]).nice().range([0, width]);
+            const y = d3.scaleLinear().domain([0, d3.max(data, d => +d[yVar])]).nice().range([height, 0]);
+
+            chart.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x));
+
+            chart.append("g")
+                .attr("class", "y axis")
+                .call(d3.axisLeft(y));
+
+            chart.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text(yAxisLabel);
+
+            chart.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .text(title);
+
+            const legend = svg.append("g")
+                .attr("transform", `translate(${width + 80}, 0)`);
+
+            legend.selectAll("rect")
+                .data(ageGroups)
+                .enter().append("rect")
+                .attr("x", 0)
+                .attr("y", (d, i) => i * 25)
+                .attr("width", 20)
+                .attr("height", 20)
+                .attr("fill", d => color(d.toString()));
+
+            legend.selectAll("text")
+                .data(ageGroups)
+                .enter().append("text")
+                .attr("x", 30)
+                .attr("y", (d, i) => i * 25 + 15)
+                .text(d => `${d}-${d + 9}`);
+
+            function updateChart() {
+                y.domain([0, d3.max(data, d => +d[yVar])]).nice();
+                chart.select(".y.axis").transition().duration(1000).call(d3.axisLeft(y));
+
+                // Clear existing circles
+                chart.selectAll("circle").remove();
+
+                // Create new circles
+                chart.selectAll("circle")
+                    .data(data)
+                    .enter().append("circle")
+                    .attr("cx", d => x(+d[xVar]))
+                    .attr("cy", d => y(+d[yVar]))
+                    .attr("r", 3.5)
+                    .attr("fill", d => color(Math.floor(+d.Age / 10) * 10));
+            }
+
+            updateChart();
+
+            return updateChart;
+        }
+
+        // Create functions for both scatter plots
+        const updateChart1 = createScatterPlot("#chart4", "AlcoholConsumption", "MMSE", "Alcohol Consumption", "MMSE");
+        const updateChart2 = createScatterPlot("#chart5", "SleepQuality", "MMSE", "Sleep Quality", "MMSE");
+
+        //update scatter plot 1 based on dropdown
+        function updateScatterPlot1() {
+            const selectedVariable = document.getElementById("dropdown1").value;
+            const yAxisLabel = selectedVariable === "MMSE" ? "MMSE" : "Functional Assessment";
+            d3.select("#chart4 svg").remove();
+            createScatterPlot("#chart4", "AlcoholConsumption", selectedVariable, "Alcohol Consumption", yAxisLabel)();
+        }
+
+        // update scatter plot 2 based on dropdown
+        function updateScatterPlot2() {
+            const selectedVariable = document.getElementById("dropdown2").value;
+            const yAxisLabel = selectedVariable === "MMSE" ? "MMSE" : "Functional Assessment";
+            d3.select("#chart5 svg").remove();
+            createScatterPlot("#chart5", "SleepQuality", selectedVariable, "Sleep Quality" , yAxisLabel)();
+        }
+        // Initialize all scenes
+        createScene1(data);
+        createScene2(data);
+        createScene3(data);
+        window.updateScatterPlot1 = updateScatterPlot1;
+        window.updateScatterPlot2 = updateScatterPlot2;
+
+        // Function to show a specific scene
+        window.showScene = function (sceneId) {
+            document.querySelectorAll('.scene').forEach(scene => scene.style.display = 'none');
+            document.getElementById(sceneId).style.display = 'block';
+        };
+    });
+</script>
+</body>
+
+</html>
